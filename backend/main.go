@@ -1,58 +1,68 @@
 package main
 
 import (
-	"encoding/json" // pra transformar dados em JSON
-	"fmt"           // pra mostrar mensagens no terminal
-	"net/http"      // pra criar um servidor web
+	"encoding/json"
+	"fmt"
+	"net/http"
 )
 
+// Estrutura de um caso de teste
 type TestCase struct {
 	ID          int    `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
 
-type BugReports struct {
+// Estrutura de um bug reportado
+type BugReport struct {
 	ID      int    `json:"id"`
 	Title   string `json:"title"`
 	Details string `json:"details"`
 }
 
+// Lista de casos de teste iniciais
 var testCases = []TestCase{
-	{ID: 1, Title: "Login com sucesso", Description: "Validar login com credenciais corretas"},
-	{ID: 2, Title: "Login com falha", Description: "Validar login com credenciais incorretas"},
-	{ID: 3, Title: "Cadastro de usuário", Description: "Validar cadastro de um novo usuário"},
-	{ID: 4, Title: "Edição de perfil", Description: "Validar edição de dados do perfil do usuário"},
-	{ID: 5, Title: "Redefinição de senha", Description: "Validar processo de redefinição de senha"},
+	{ID: 1, Title: "Login com sucesso", Description: "Validar login com credenciais válidas"},
+	{ID: 2, Title: "Senha inválida", Description: "Exibir erro ao inserir senha incorreta"},
+	{ID: 3, Title: "Campo obrigatório", Description: "Validar mensagem de erro ao deixar campo obrigatório vazio"},
+	{ID: 4, Title: "Redirecionamento após login", Description: "Verificar redirecionamento para a página inicial após login bem-sucedido"},
+	{ID: 5, Title: "Logout", Description: "Validar que o usuário é desconectado corretamente"},
+	{ID: 6, Title: "Cadastro de usuário", Description: "Validar cadastro com dados válidos"},
 }
 
-var bugReports = []BugReports{}
-
-var bugId = 1
-
-// Função principal que inicia o servidor HTTP
+// Lista de bugs (inicialmente vazia)
+var bugReports = []BugReport{}
+var bugID = 1
 
 func main() {
+	// Endpoint para retornar casos de teste
 	http.HandleFunc("/testcases", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json") // Define o tipo de resposta como JSON
-		json.NewEncoder(w).Encode(testCases)               // Converte a lista em JSON e envia
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(testCases)
 	})
 
-	// Rota para criar um novo bug report
+	// Endpoint para manipular bugs
 	http.HandleFunc("/bugs", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodGet {
-			var newBug BugReports
+
+		if r.Method == http.MethodPost {
+			var newBug BugReport
 			json.NewDecoder(r.Body).Decode(&newBug)
-			newBug.ID = bugId
-			bugId++
+
+			// Validação simples para garantir que o título e os detalhes não estejam vazios
+			if newBug.Title == "" || newBug.Details == "" {
+				http.Error(w, "Título e detalhes são obrigatórios", http.StatusBadRequest)
+				return
+			}
+			newBug.ID = bugID
+			bugID++
 			bugReports = append(bugReports, newBug)
 
-			// Responde com o novo bug criado
 			w.WriteHeader(http.StatusCreated)
 			json.NewEncoder(w).Encode(newBug)
+
 		} else {
-			json.NewEncoder(w).Encode(bugReports) // Retorna todos os bugs existentes
+			json.NewEncoder(w).Encode(bugReports)
 		}
 	})
 
